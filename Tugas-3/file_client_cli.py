@@ -91,7 +91,7 @@ def remote_delete(filename):
 
 
 if __name__ == '__main__':
-    server_address = ('172.18.0.3', 7777)
+    server_address = ('172.16.16.101', 7777)
     while True:
         print("\nPilih operasi:")
         print("1. List file")
@@ -117,4 +117,3 @@ if __name__ == '__main__':
             break
         else:
             print("Pilihan tidak valid.")
-
