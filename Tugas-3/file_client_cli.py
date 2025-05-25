@@ -82,7 +82,7 @@ def remote_upload(filename):
 def remote_delete(filename):
     command_str = f"DELETE {filename}"
     hasil = send_command(command_str)
-    if hasil['status'] == 'TOK':
+    if hasil['status'] == 'OK':
         print("Delete berhasil")
         return True
     else:
