@@ -14,50 +14,47 @@ httpserver = HttpServer()
 
 # ...existing code...
 def ProcessTheClient(connection, address):
-    rcv = b""
-    headers_ended = False
-    content_length = 0
-    while True:
-        try:
-            data = connection.recv(1024*1024)
-            if data:
-                rcv += data
-                if not headers_ended:
-                    if b"\r\n\r\n" in rcv:
-                        headers_ended = True
-                        header, rest = rcv.split(b"\r\n\r\n", 1)
-                        header_str = header.decode()
-                        for line in header_str.split("\r\n"):
-                            if line.lower().startswith("content-length:"):
-                                content_length = int(line.split(":", 1)[1].strip())
-                        body = rest
-                        # Jika body sudah lengkap
-                        while len(body) < content_length:
-                            more = connection.recv(1024*1024)
-                            if not more:
-                                break
-                            body += more
-                        full_request = header + b"\r\n\r\n" + body
-                        hasil = httpserver.proses(full_request.decode(errors='ignore'))
-                        hasil = hasil + "\r\n\r\n".encode()
-                        connection.sendall(hasil)
-                        connection.close()
-                        return
-                else:
-                    # Untuk request tanpa body
-                    hasil = httpserver.proses(rcv.decode(errors='ignore'))
-                    hasil = hasil + "\r\n\r\n".encode()
-                    connection.sendall(hasil)
-                    connection.close()
-                    return
-            else:
+    try:
+        buffer = b""
+        content_length = 0
+
+        while True:
+            data = connection.recv(1024)
+            if not data:
                 break
-        except OSError as e:
-            pass
-    connection.close()
-    return
+            buffer += data
 
+            if b"\r\n\r\n" in buffer:
+                header, body = buffer.split(b"\r\n\r\n", 1)
+                header_lines = header.decode(errors='ignore').split("\r\n")
 
+                for line in header_lines:
+                    if line.lower().startswith("content-length:"):
+                        content_length = int(line.split(":", 1)[1].strip())
+                        break
+
+                # Jika ada body, lanjutkan baca hingga lengkap
+                while len(body) < content_length:
+                    more = connection.recv(1024)
+                    if not more:
+                        break
+                    body += more
+
+                full_request = header + b"\r\n\r\n" + body
+                break  # Selesai membaca
+
+        # Jika tidak ada header sama sekali
+        if not buffer:
+            connection.close()
+            return
+
+        # Proses permintaan
+        hasil = httpserver.proses(full_request.decode(errors='ignore'))
+        connection.sendall(hasil.encode() + b"\r\n\r\n")
+    except Exception as e:
+        logging.warning(f"Terjadi error: {e}")
+    finally:
+        connection.close()
 
 def Server():
 	the_clients = []
@@ -76,10 +73,6 @@ def Server():
 				#menampilkan jumlah process yang sedang aktif
 				jumlah = ['x' for i in the_clients if i.running()==True]
 				print(jumlah)
-
-
-
-
 
 def main():
 	Server()
